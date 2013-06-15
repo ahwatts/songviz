@@ -34,6 +34,4 @@ Songviz::Application.configure do
 
   # Expands the lines which load the assets
   config.assets.debug = true
-
-  self.song_base_path = Pathname.new("C:/Music")
 end

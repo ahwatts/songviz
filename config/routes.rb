@@ -1,6 +1,8 @@
+# -*- encoding: utf-8 -*-
+
 Songviz::Application.routes.draw do
-  match "music/(:path)" => "music#serve_song", :as => :serve_song
-  match "viz/:path" => "viz#song", :as => :viz_song
+  match("music(/*path)" => "music#serve_song", :as => :serve_song, :defaults => { :format => "mp3" })
+  match("viz/song(/*path)" => "viz#song", :as => :viz_song, :defaults => { :format => "mp3" })
   root :to => "viz#index"
 
   # The priority is based upon order of creation:

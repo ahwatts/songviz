@@ -58,5 +58,9 @@ module Songviz
 
     # Version of your assets, change this if you want to expire all your assets
     config.assets.version = '1.0'
+
+    class_attribute :song_base_path
+
+    self.song_base_path = Pathname.new("/")
   end
 end
