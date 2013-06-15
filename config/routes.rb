@@ -1,4 +1,8 @@
 Songviz::Application.routes.draw do
+  get "music/:path" => "music#serve_song"
+  get "viz/:path" => "viz#song"
+  root :to => "viz#index"
+
   # The priority is based upon order of creation:
   # first created -> highest priority.
 
