@@ -1,0 +1,13 @@
+!!!
+%html
+  %head
+    %title Songviz
+    = stylesheet_link_tag "application", :media => "all"
+    = yield :include_stylesheets
+
+    = javascript_include_tag "application"
+    = yield :include_javascripts
+
+    = csrf_meta_tags
+  %body
+    = yield
