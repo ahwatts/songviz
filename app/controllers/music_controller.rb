@@ -5,7 +5,7 @@ class MusicController < ApplicationController
       return
     end
 
-    @song_paht = valid_song_path(params[:path])
+    @song_path = valid_song_path(params[:path])
 
     if @song_path.nil?
       not_found
