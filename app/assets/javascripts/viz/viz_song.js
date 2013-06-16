@@ -26,17 +26,21 @@
       event.preventDefault();
       var elem = $(this);
       var song_path = elem.attr("data-song-path");
-      var sanitized_song_path = song_path.replace(new RegExp("[ /.]", "g"), "");
+      var sanitized_song_path = song_path.replace(new RegExp("[^A-Za-z0-9]", "g"), "").toLowerCase();
+      var last_log = new Date();
       var sound = window.soundManager.createSound({
         id: "sound_song_" + sanitized_song_path,
         url: "/music/" + song_path,
         whileplaying: function() {
-          $("#viz").html(this.waveformData);
+          var now = new Date();
+          if (now - last_log > 2000) {
+            console.debug(this.eqData);
+            last_log = now;
+          }
         }
       });
       elem.data("sound", sound);
-      sound.play();
-    });
+      sound.play();});
 
     $("a[data-song-path][data-song-action=stop]").click(function(event) {
       event.preventDefault();
