@@ -1,4 +1,11 @@
+- content_for :include_javascripts do
+  = javascript_include_tag "viz/viz_song"
+
+%div#song_info
+  = @song_path
+
 %div#controls
-  %a{data-song-path: @song_path, data-action: "play"} Play
-  %a{data-song-path: @song_path, data-action: "stop"} Stop
+  %a{ :href => "#", "data-song-path" => @song_path, "data-action" => "play" } Play
+  %a{ :href => "#", "data-song-path" => @song_path, "data-action" => "stop" } Stop
+
 %div#viz

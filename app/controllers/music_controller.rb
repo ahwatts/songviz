@@ -5,16 +5,9 @@ class MusicController < ApplicationController
       return
     end
 
-    @song_path = (Rails.application.song_base_path + "#{params[:path]}").expand_path
+    @song_paht = valid_song_path(params[:path])
 
-    if @song_path.relative_path_from(Rails.application.song_base_path).to_s =~ /\.\./
-      not_found
-      return
-    end
-
-    @song_path = @song_path.dirname + (@song_path.basename.to_s + ".mp3")
-
-    if !@song_path.exist?
+    if @song_path.nil?
       not_found
       return
     end

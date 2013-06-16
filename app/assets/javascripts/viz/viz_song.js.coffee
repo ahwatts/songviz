@@ -1,0 +1,2 @@
+#= require 'soundmanager2'
+
