@@ -1,7 +1,9 @@
+// -*- mode: js -*-
 //= require 'soundmanager2'
+//= require 'three'
 
 (function($) {
-  $(document).ready(function() {
+  function initSoundManager() {
     var viz = $("#viz");
     var wnd = $(window);
     var body = $("body");
@@ -21,7 +23,9 @@
         useEQData: true
       }
     });
+  }
 
+  function initControls() {
     $("a[data-song-path][data-song-action=play]").click(function(event) {
       event.preventDefault();
       var elem = $(this);
@@ -53,5 +57,39 @@
       }
       play_elem.data("sound", null);
     });
+  }
+
+  function loadShaderSource() {
+    var viz = $("#viz");
+
+    $.get("/assets/viz/song_vertex.glsl", function(data) {
+      console.debug("(vertex) data = %o", data);
+      viz.data("vertex-shader-source", data);
+    });
+    $.get("/assets/viz/song_fragment.glsl", function(data) {
+      console.debug("(fragment) data = %o", data);
+      viz.data("fragment-shader-source", data);
+    });
+  }
+
+  function shaderSourcesLoaded() {
+    var viz = $("#viz");
+    return viz.data("vertex-shader-source") !== undefined &&
+      viz.data("fragment-shader-source") !== undefined;
+  }
+
+  function delayedInit() {
+    if (!shaderSourcesLoaded()) {
+      setTimeout(delayedInit, 50);
+      return;
+    }
+
+    initSoundManager();
+    initControls();
+  }
+
+  $(document).ready(function() {
+    loadShaderSource();
+    delayedInit();
   });
 })(jQuery);
