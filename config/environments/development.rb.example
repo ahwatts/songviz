@@ -1,3 +1,5 @@
+# -*- mode: ruby; encoding: utf-8 -*-
+
 Songviz::Application.configure do
   # Settings specified here will take precedence over those in config/application.rb
 
@@ -34,4 +36,6 @@ Songviz::Application.configure do
 
   # Expands the lines which load the assets
   config.assets.debug = true
+
+  self.song_base_path = Pathname.new("/")
 end
