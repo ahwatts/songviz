@@ -1,12 +1,10 @@
 // -*- mode: c -*-
 
-// projectionMatrix, modelViewMatrix, and position (among others) are
-// defined by three.js.
-
-attribute vec4 aColor;
+attribute float amplitude;
 varying vec4 vColor;
 
 void main(void) {
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  vColor = aColor;
+  gl_Position = projectionMatrix * modelViewMatrix *
+    vec4(position.x, position.y * amplitude * 256.0, position.z, 1.0);
+  vColor = vec4(amplitude, 0.0, 0.5, 1.0);
 }

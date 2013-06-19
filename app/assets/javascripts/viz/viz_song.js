@@ -3,6 +3,8 @@
 //= require 'three'
 
 (function($) {
+  var eq_data = null;
+
   function initSoundManager() {
     // Initialize sm2.
     window.soundManager.setup({
@@ -22,16 +24,12 @@
       var elem = $(this);
       var song_path = elem.attr("data-song-path");
       var sanitized_song_path = song_path.replace(new RegExp("[^A-Za-z0-9]", "g"), "").toLowerCase();
-      var last_log = new Date();
       var sound = window.soundManager.createSound({
         id: "sound_song_" + sanitized_song_path,
-        url: "/music/" + song_path
-        // whileplaying: function() {
-        //   var now = new Date();
-        //   if (now - last_log > 2000) {
-        //     last_log = now;
-        //   }
-        // }
+        url: "/music/" + song_path,
+        whileplaying: function() {
+          eq_data = this.eqData;
+        }
       });
       elem.data("sound", sound);
       sound.play();
@@ -94,12 +92,14 @@
         vertexShader: viz_container.data("vertex-shader-source"),
         fragmentShader: viz_container.data("fragment-shader-source"),
         attributes: {
-          aColor: { type: "v4", value: [] }
+          amplitude: { type: "f", value: [] }
         }
       })
     );
     graph.name = "grpah";
-    graph.position = new THREE.Vector3(0, 0.5, 0);
+    graph.position = new THREE.Vector3(0, 0, 0);
+    graph.rotation = new THREE.Vector3(0, 0, 0);
+    graph.rotationAutoUpdate = true;
 
     var scene = new THREE.Scene();
     scene.add(camera);
@@ -111,6 +111,7 @@
 
     var update = function() {
       var viz_container = $("#viz_container");
+      var t = new Date() - start;
 
       if (viz_container.data("stopVisualization") === true) {
         scene.remove(graph);
@@ -118,28 +119,27 @@
         graph.material.dispose();
         viz_container.empty();
       } else if (viz_container.data("stopVisualization") !== true) {
-        setTimeout(function() { window.requestAnimationFrame(update); }, 32);
+        setTimeout(function() { window.requestAnimationFrame(update); }, 47);
       }
 
-      graph.geometry.computeBoundingBox();
-      var b = graph.geometry.boundingBox;
-      var max = new THREE.Vector3(Math.max(Math.abs(b.min.x), Math.abs(b.max.x)),
-                                  Math.max(Math.abs(b.min.y), Math.abs(b.max.y)),
-                                  Math.max(Math.abs(b.min.z), Math.abs(b.max.z)));
       for (var i = 0; i < graph.geometry.vertices.length; ++i) {
         var v = graph.geometry.vertices[i];
-        var noise = (Math.random() - 0.5) / 50.0;
-        graph.material.attributes.aColor.value[i] =
-          new THREE.Vector4(Math.abs(v.x / max.x) + noise, 0.0, 1.0,
-                            Math.abs(v.y / max.y) + noise, 0.0, 1.0,
-                            Math.abs(v.z / max.z) + noise, 0.0, 1.0,
-                            1.0);
+        var j = Math.round(v.x) + 127;
+        var side = j < 256 ? "left" : "right";
+        if (eq_data !== null) {
+          graph.material.attributes.amplitude.value[i] = eq_data[side][j];
+        }
       }
-      graph.material.attributes.aColor.needsUpdate = true;
+      graph.material.attributes.amplitude.needsUpdate = true;
+      graph.rotation.y = t * Math.PI / 5000;
+      if (graph.rotation.y > 2*Math.PI) {
+        graph.rotation.y = graph.rotation.y - 2*Math.PI;
+      }
 
       renderer.render(scene, camera);
-    };
+    };     
 
+    var start = new Date();
     update();
   }
 
