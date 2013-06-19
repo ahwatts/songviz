@@ -4,15 +4,6 @@
 
 (function($) {
   function initSoundManager() {
-    var viz = $("#viz");
-    var wnd = $(window);
-    var body = $("body");
-
-    // Set the viz area to be everything that isn't already taken up.
-    viz.height(wnd.innerHeight() -
-               viz.position().top -
-               parseInt(body.css("margin"), 10));
-
     // Initialize sm2.
     window.soundManager.setup({
       url: "/flash/sm2/",
@@ -38,7 +29,6 @@
         whileplaying: function() {
           var now = new Date();
           if (now - last_log > 2000) {
-            console.debug(this.eqData);
             last_log = now;
           }
         }
@@ -60,20 +50,18 @@
   }
 
   function loadShaderSource() {
-    var viz = $("#viz");
+    var viz = $("#viz_container");
 
     $.get("/assets/viz/song_vertex.glsl", function(data) {
-      console.debug("(vertex) data = %o", data);
       viz.data("vertex-shader-source", data);
     });
     $.get("/assets/viz/song_fragment.glsl", function(data) {
-      console.debug("(fragment) data = %o", data);
       viz.data("fragment-shader-source", data);
     });
   }
 
   function shaderSourcesLoaded() {
-    var viz = $("#viz");
+    var viz = $("#viz_container");
     return viz.data("vertex-shader-source") !== undefined &&
       viz.data("fragment-shader-source") !== undefined;
   }
@@ -86,6 +74,65 @@
 
     initSoundManager();
     initControls();
+
+    var viz_container = $("#viz_container");
+    var wnd = $(window);
+    var renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      preserveDrawingBuffer: true
+    });
+    renderer.setClearColor(0x000000, 1.0);
+    renderer.setSize(wnd.innerWidth(), wnd.innerHeight());
+
+    var camera = new THREE.PerspectiveCamera(45.0, renderer.domElement.width / renderer.domElement.height, 0.1, 10000.0);
+    camera.position = new THREE.Vector3(0, 0, 500);
+    camera.up = new THREE.Vector3(0, 1, 0);
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+    var graph = new THREE.Mesh(
+      new THREE.CubeGeometry(256, 1, 2, 256, 1, 2),
+      new THREE.ShaderMaterial({
+        vertexShader: viz_container.data("vertex-shader-source"),
+        fragmentShader: viz_container.data("fragment-shader-source"),
+        attributes: {
+          aColor: { type: "v4", value: [] }
+        }
+      })
+    );
+    graph.name = "grpah";
+    graph.position = new THREE.Vector3(0, 0.5, 0);
+
+    var scene = new THREE.Scene();
+    scene.add(camera);
+    scene.add(graph);
+
+    var canvas = $(renderer.domElement);
+    canvas.css({ position: "absolute", top: "0px" });
+    viz_container.append(renderer.domElement);
+
+    var update = function() {
+      setTimeout(function() { window.requestAnimationFrame(update); }, 32);
+
+      graph.geometry.computeBoundingBox();
+      var b = graph.geometry.boundingBox;
+      var max = new THREE.Vector3(Math.max(Math.abs(b.min.x), Math.abs(b.max.x)),
+                                  Math.max(Math.abs(b.min.y), Math.abs(b.max.y)),
+                                  Math.max(Math.abs(b.min.z), Math.abs(b.max.z)));
+      for (var i = 0; i < graph.geometry.vertices.length; ++i) {
+        var v = graph.geometry.vertices[i];
+        var noise = (Math.random() - 0.5) / 50.0;
+        graph.material.attributes.aColor.value[i] =
+          new THREE.Vector4(Math.abs(v.x / max.x) + noise, 0.0, 1.0,
+                            Math.abs(v.y / max.y) + noise, 0.0, 1.0,
+                            Math.abs(v.z / max.z) + noise, 0.0, 1.0,
+                            1.0);
+      }
+      graph.material.attributes.aColor.needsUpdate = true;
+
+      renderer.render(scene, camera);
+    };
+
+    update();
   }
 
   $(document).ready(function() {
