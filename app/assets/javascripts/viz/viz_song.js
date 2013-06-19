@@ -25,16 +25,18 @@
       var last_log = new Date();
       var sound = window.soundManager.createSound({
         id: "sound_song_" + sanitized_song_path,
-        url: "/music/" + song_path,
-        whileplaying: function() {
-          var now = new Date();
-          if (now - last_log > 2000) {
-            last_log = now;
-          }
-        }
+        url: "/music/" + song_path
+        // whileplaying: function() {
+        //   var now = new Date();
+        //   if (now - last_log > 2000) {
+        //     last_log = now;
+        //   }
+        // }
       });
       elem.data("sound", sound);
-      sound.play();});
+      sound.play();
+      runVisualization();
+    });
 
     $("a[data-song-path][data-song-action=stop]").click(function(event) {
       event.preventDefault();
@@ -46,6 +48,7 @@
         sound.destruct();
       }
       play_elem.data("sound", null);
+      $("#viz_container").data("stopVisualization", true);
     });
   }
 
@@ -66,23 +69,19 @@
       viz.data("fragment-shader-source") !== undefined;
   }
 
-  function delayedInit() {
-    if (!shaderSourcesLoaded()) {
-      setTimeout(delayedInit, 50);
-      return;
-    }
-
-    initSoundManager();
-    initControls();
-
+  function runVisualization() {
     var viz_container = $("#viz_container");
+    var body = $("body");
     var wnd = $(window);
+
+    viz_container.data("stopVisualization", false);
+
     var renderer = new THREE.WebGLRenderer({
       antialias: true,
       preserveDrawingBuffer: true
     });
     renderer.setClearColor(0x000000, 1.0);
-    renderer.setSize(wnd.innerWidth(), wnd.innerHeight());
+    renderer.setSize(body.innerWidth(), wnd.innerHeight());
 
     var camera = new THREE.PerspectiveCamera(45.0, renderer.domElement.width / renderer.domElement.height, 0.1, 10000.0);
     camera.position = new THREE.Vector3(0, 0, 500);
@@ -107,11 +106,20 @@
     scene.add(graph);
 
     var canvas = $(renderer.domElement);
-    canvas.css({ position: "absolute", top: "0px" });
+    canvas.css({ position: "fixed", top: "5px", left: "5px", "z-index": -1 });
     viz_container.append(renderer.domElement);
 
     var update = function() {
-      setTimeout(function() { window.requestAnimationFrame(update); }, 32);
+      var viz_container = $("#viz_container");
+
+      if (viz_container.data("stopVisualization") === true) {
+        scene.remove(graph);
+        graph.geometry.dispose();
+        graph.material.dispose();
+        viz_container.empty();
+      } else if (viz_container.data("stopVisualization") !== true) {
+        setTimeout(function() { window.requestAnimationFrame(update); }, 32);
+      }
 
       graph.geometry.computeBoundingBox();
       var b = graph.geometry.boundingBox;
@@ -133,6 +141,16 @@
     };
 
     update();
+  }
+
+  function delayedInit() {
+    if (!shaderSourcesLoaded()) {
+      setTimeout(delayedInit, 50);
+      return;
+    }
+
+    initSoundManager();
+    initControls();
   }
 
   $(document).ready(function() {
