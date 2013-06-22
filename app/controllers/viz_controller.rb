@@ -27,4 +27,5 @@ class VizController < ApplicationController
       @song_path = @song_path.relative_path_from(Rails.application.song_base_path)
     end
   end
+  alias :song2 :song
 end
