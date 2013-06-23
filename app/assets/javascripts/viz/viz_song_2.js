@@ -132,7 +132,7 @@
         l = (i * refs.y + j)*6;
 
         // index into positions
-        k = i * refs.y + j;
+        k = i * (refs.y + 1) + j;
 
         // upper triangle
         indices[l+0] = k;
@@ -167,11 +167,15 @@
       return;
     }
 
+    var canvas = $("canvas#viz");
+    var body = $("body");
+    var wnd = $(window);
+    canvas.width(body.innerWidth());
+    canvas.height(wnd.innerHeight());
+
     initSoundManager();
     initControls();
     initGL();
-
-    var canvas = $("canvas#viz");
 
     var program = createProgram(
       createShader(gl.VERTEX_SHADER, $("#viz_container").data("vertex-shader-source")),
@@ -182,9 +186,9 @@
     var a_position = gl.getAttribLocation(program, "aPosition");
 
     var square = createPlaneGeometry(
-      { width: 3.0, height: 2.0 },
-      { x: 0.0, y: 0.0 },
-      { x: 3, y: 2 });
+      { width: 512.0, height: 512.0 },
+      { x: -256.0, y: -256.0 },
+      { x: 2, y: 3 });
 
     var square_position = vec3.create();
     var square_rotation = 0.0;
@@ -197,12 +201,17 @@
                      0.1,                                        // near bound
                      1000.0);                                    // far bound
     mat4.lookAt(base_model_view,
-                vec3.fromValues(0.0, 0.0, 10.0), // viewer
+                vec3.fromValues(0.0, 0.0, 600.0), // viewer
                 vec3.fromValues(0.0, 0.0, 0.0),   // looking at
                 vec3.fromValues(0.0, 1.0, 0.0));  // up
 
     var render = function() {
       var model_view = mat4.clone(base_model_view);
+
+      // Clear the screen.
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      // Draw the square.
       mat4.rotateY(model_view, model_view, square_rotation);
 
       gl.uniformMatrix4fv(u_projection, false, projection);
@@ -213,8 +222,6 @@
       gl.enableVertexAttribArray(a_position);
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, square.indices);
-
-      gl.clear(gl.COLOR_BUFFER_BIT, gl.DEPTH_BUFFER_BIT);
       gl.drawElements(gl.TRIANGLES, square.count, gl.UNSIGNED_SHORT, 0);
     };
 
