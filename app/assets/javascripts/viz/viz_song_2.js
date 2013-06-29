@@ -170,8 +170,10 @@
     var canvas = $("canvas#viz");
     var body = $("body");
     var wnd = $(window);
-    canvas.width(body.innerWidth());
-    canvas.height(wnd.innerHeight());
+    canvas.attr({
+      width: body.innerWidth(),
+      height: wnd.innerHeight()
+    });
 
     initSoundManager();
     initControls();
@@ -198,7 +200,7 @@
     mat4.perspective(projection,
                      Math.PI / 4.0,                              // vertical fov
                      canvas.innerWidth() / canvas.innerHeight(), // aspect
-                     600.0,                                        // near bound
+                     600.0,                                      // near bound
                      1600.0);                                    // far bound
     mat4.lookAt(base_model_view,
                 [ 0.0, 0.0, 1000.0 ],  // viewer
