@@ -157,7 +157,7 @@
     return {
       "positions": position_buffer,
       "indices": index_buffer,
-      "count": indices.length / 6
+      "count": indices.length
     };
   }
 
@@ -198,20 +198,19 @@
     mat4.perspective(projection,
                      Math.PI / 4.0,                              // vertical fov
                      canvas.innerWidth() / canvas.innerHeight(), // aspect
-                     0.1,                                        // near bound
-                     1000.0);                                    // far bound
+                     600.0,                                        // near bound
+                     1600.0);                                    // far bound
     mat4.lookAt(base_model_view,
-                vec3.fromValues(0.0, 0.0, 600.0), // viewer
-                vec3.fromValues(0.0, 0.0, 0.0),   // looking at
-                vec3.fromValues(0.0, 1.0, 0.0));  // up
+                [ 0.0, 0.0, 1000.0 ],  // viewer
+                [ 0.0, 0.0,    0.0 ],  // looking at
+                [ 0.0, 1.0,    0.0 ]); // up
 
     var render = function() {
-      var model_view = mat4.clone(base_model_view);
-
       // Clear the screen.
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
       // Draw the square.
+      var model_view = mat4.clone(base_model_view);
       mat4.rotateY(model_view, model_view, square_rotation);
 
       gl.uniformMatrix4fv(u_projection, false, projection);
@@ -222,7 +221,11 @@
       gl.enableVertexAttribArray(a_position);
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, square.indices);
-      gl.drawElements(gl.TRIANGLES, square.count, gl.UNSIGNED_SHORT, 0);
+      // gl.drawElements(gl.TRIANGLES, square.count,
+      // gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(gl.TRIANGLES, 21, gl.UNSIGNED_SHORT, 0);
+
+      gl.flush();
     };
 
     var update = function() {
