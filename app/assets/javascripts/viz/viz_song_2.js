@@ -223,9 +223,7 @@
       gl.enableVertexAttribArray(a_position);
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, square.indices);
-      // gl.drawElements(gl.TRIANGLES, square.count,
-      // gl.UNSIGNED_SHORT, 0);
-      gl.drawElements(gl.TRIANGLES, 21, gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(gl.TRIANGLES, square.count, gl.UNSIGNED_SHORT, 0);
 
       gl.flush();
     };
