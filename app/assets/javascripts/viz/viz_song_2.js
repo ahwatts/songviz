@@ -161,8 +161,11 @@
     };
   }
 
-  function createPlaneGeometry(dims, min, refs) {
+  function createPlaneGeometry(options) {
     var i, j, k, x, y;
+    var dims = { width: options.width, height: options.height };
+    var min = { x: options.left, y: options.bottom };
+    var refs = { x: options.xRefinements, y: options.yRefinements };
 
     var positions = new Float32Array((refs.x+1)*(refs.y+1)*3);
     for (i = 0; i < refs.x + 1; ++i) {
@@ -225,10 +228,11 @@
       vertexSource: $("#viz_container").data("vertex-shader-source"),
       fragmentSource: $("#viz_container").data("fragment-shader-source")
     });
-    var square = createPlaneGeometry(
-      { width: 512.0, height: 512.0 },
-      { x: -256.0, y: -256.0 },
-      { x: 2, y: 3 });
+    var square = createPlaneGeometry({
+      width: 512.0, height: 512.0,
+      left: -256.0, bottom: -256.0,
+      xRefinements: 2, yRefinements: 3
+    });
 
     gl.useProgram(shader.program);
     var u_projection = shader.uniforms.uProjection;
