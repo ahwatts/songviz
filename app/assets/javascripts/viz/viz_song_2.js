@@ -166,16 +166,23 @@
     var dims = { width: options.width, height: options.height };
     var min = { x: options.left, y: options.bottom };
     var refs = { x: options.xRefinements, y: options.yRefinements };
+    var vertex_width = 5;
 
-    var positions = new Float32Array((refs.x+1)*(refs.y+1)*3);
+    var attribute_data = new Float32Array((refs.x+1)*(refs.y+1)*vertex_width);
     for (i = 0; i < refs.x + 1; ++i) {
       x = i*(dims.width / refs.x) + min.x;
       for (j = 0; j < refs.y + 1; ++j) {
-        k = (i*(refs.y + 1) + j)*3;
+        k = (i*(refs.y + 1) + j)*vertex_width;
         y = j*(dims.height / refs.y) + min.y;
-        positions[k] = x;
-        positions[k+1] = y;
-        positions[k+2] = 0.0;
+
+        // Position.
+        attribute_data[k] = x;
+        attribute_data[k+1] = y;
+        attribute_data[k+2] = 0.0;
+
+        // Texture coordinates.
+        attribute_data[k+3] = (y - min.y) / dims.height;
+        attribute_data[k+4] = 0.0;
       }
     }
 
@@ -185,7 +192,7 @@
         // index into indices
         l = (i * refs.y + j)*6;
 
-        // index into positions
+        // index into attribute_data
         k = i * (refs.y + 1) + j;
 
         // upper triangle
@@ -200,16 +207,19 @@
       }
     }
 
-    var position_buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, position_buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+    var attribute_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, attribute_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, attribute_data, gl.STATIC_DRAW);
 
     var index_buffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
     return {
-      "positions": position_buffer,
+      "attributes": attribute_buffer,
+      "positionOffset": 0,
+      "texCoordOffset": 3,
+      "vertexWidth": 5,
       "indices": index_buffer,
       "count": indices.length,
       "destroy": function() {
@@ -219,6 +229,34 @@
         if (gl.isBuffer(index_buffer)) { gl.deleteBuffer(index_buffer); }
       }
     };
+  }
+
+  function createAmplitudeTexture() {
+    var amplitudes = new Uint8Array(256);
+    var texture = null;
+    var i;
+
+    for (i = 0; i < 256; ++i) {
+      amplitudes[i] = 128.0*Math.cos(i*2*Math.PI/255.0) + 128.0;
+    }
+
+    texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(
+      gl.TEXTURE_2D, // target
+      0,             // level
+      gl.ALPHA,      // internal format
+      256,           // width
+      1,             // height
+      0,             // border
+      gl.ALPHA,      // format
+      gl.UNSIGNED_BYTE, // type
+      amplitudes     // data
+    );
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+    return texture;
   }
 
   function startAnimation() {
@@ -231,13 +269,17 @@
     var square = createPlaneGeometry({
       width: 512.0, height: 512.0,
       left: -256.0, bottom: -256.0,
-      xRefinements: 2, yRefinements: 3
+      xRefinements: 2, yRefinements: 256
     });
+    var amplitudes = createAmplitudeTexture();
 
     gl.useProgram(shader.program);
     var u_projection = shader.uniforms.uProjection;
-    var u_model_view = shader.uniforms.uModelView; 
+    var u_model_view = shader.uniforms.uModelView;
+    var u_amplitudes = shader.uniforms.uAmplitudes;
+    var u_max_amplitude = shader.uniforms.uMaxAmplitude;
     var a_position = shader.attributes.aPosition;
+    var a_tex_coord = shader.attributes.aTexCoord;
 
     var square_position = vec3.create();
     var square_rotation = 0.0;
@@ -264,10 +306,29 @@
 
       gl.uniformMatrix4fv(u_projection, false, projection);
       gl.uniformMatrix4fv(u_model_view, false, model_view);
+      gl.uniform1f(u_max_amplitude, 256.0);
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, square.positions);
-      gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, 0, 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, amplitudes);
+      gl.uniform1i(u_amplitudes, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, square.attributes);
+      gl.vertexAttribPointer(
+        a_position,                        // attribute location
+        3,                                 // components per attribute
+        gl.FLOAT,                          // component type
+        false,                             // normalized
+        square.vertexWidth*Float32Array.BYTES_PER_ELEMENT,     // stride (in bytes)
+        square.positionOffset*Float32Array.BYTES_PER_ELEMENT); // offset (in bytes)        
       gl.enableVertexAttribArray(a_position);
+      gl.vertexAttribPointer(
+        a_tex_coord,                       // attribute location
+        2,                                 // components per attribute
+        gl.FLOAT,                          // component type
+        false,                             // normalized
+        square.vertexWidth*Float32Array.BYTES_PER_ELEMENT,     // stride (in bytes)
+        square.texCoordOffset*Float32Array.BYTES_PER_ELEMENT); // offset (in bytes)
+      gl.enableVertexAttribArray(a_tex_coord);
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, square.indices);
       gl.drawElements(gl.TRIANGLES, square.count, gl.UNSIGNED_SHORT, 0);
@@ -279,8 +340,8 @@
       var refresh = 30; // msec
 
       if (canvas.data("stopVisualization") === true) {
-        shader.destroy();
-        square.destroy();
+        // shader.destroy();
+        // square.destroy();
         clearScreen();
         return;
       } else {
