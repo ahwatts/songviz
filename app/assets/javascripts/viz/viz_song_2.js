@@ -23,6 +23,7 @@
     $("a[data-song-path][data-song-action=play]").click(function(event) {
       event.preventDefault();
       var elem = $(this);
+      var canvas = $("canvas#viz");
       var song_path = elem.attr("data-song-path");
       var sanitized_song_path = song_path.replace(new RegExp("[^A-Za-z0-9]", "g"), "").toLowerCase();
       var sound = window.soundManager.createSound({
@@ -34,11 +35,14 @@
       });
       elem.data("sound", sound);
       sound.play();
+      canvas.data("stopVisualization", false);
+      startAnimation();
     });
 
     $("a[data-song-path][data-song-action=stop]").click(function(event) {
       event.preventDefault();
       var elem = $(this);
+      var canvas = $("canvas#viz");
       var song_path = elem.attr("data-song-path");
       var play_elem = $("a[data-song-path='" + song_path + "'][data-song-action=play]");
       var sound = play_elem.data("sound");
@@ -46,6 +50,7 @@
         sound.destruct();
       }
       play_elem.data("sound", null);
+      canvas.data("stopVisualization", true);
     });
   }
 
@@ -79,6 +84,8 @@
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.viewport(0, 0, canvas.innerWidth(), canvas.innerHeight());
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.clear(gl.DEPTH_BUFFER_BIT));
+    gl.flush();
   }
 
   function createShader(type, source) {
@@ -108,6 +115,20 @@
       program = null;
     }
     return program;
+  }
+
+  function destroyProgram(program) {
+    if (gl.isProgram(program)) {
+      var shaders = gl.getAttachedShaders(program);
+      for (var i = 0; i < shaders.length; ++i) {
+        var s = shaders[i];
+        if (gl.isShader(s)) {
+          gl.detachShader(program, s);
+          gl.deleteShader(s);
+        }
+      }
+      gl.deleteProgram(program);
+    }
   }
 
   function createPlaneGeometry(dims, min, refs) {
@@ -157,28 +178,16 @@
     return {
       "positions": position_buffer,
       "indices": index_buffer,
-      "count": indices.length
+      "count": indices.length,
+      "destroy": function() {
+        gl.deleteBuffer(position_buffer);
+        gl.deleteBuffer(index_buffer);
+      }
     };
   }
 
-  function delayedInit() {
-    if (!shaderSourcesLoaded()) {
-      setTimeout(delayedInit, 50);
-      return;
-    }
-
+  function startAnimation() {
     var canvas = $("canvas#viz");
-    var body = $("body");
-    var wnd = $(window);
-    canvas.attr({
-      width: body.innerWidth(),
-      height: wnd.innerHeight()
-    });
-
-    initSoundManager();
-    initControls();
-    initGL();
-
     var program = createProgram(
       createShader(gl.VERTEX_SHADER, $("#viz_container").data("vertex-shader-source")),
       createShader(gl.FRAGMENT_SHADER, $("#viz_container").data("fragment-shader-source")));
@@ -231,13 +240,41 @@
     var update = function() {
       var refresh = 30; // msec
 
-      window.setTimeout(update, refresh);
+      if (canvas.data("stopVisualization") === true) {
+        destroyProgram(program);
+        square.destroy();
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.flush();
+        return;
+      } else {
+        window.setTimeout(update, refresh);
+      }
+      
       square_rotation = square_rotation + (2*Math.PI / 10000)*refresh;
       if (square_rotation > 2*Math.PI) { square_rotation = square_rotation - 2*Math.PI; }
       window.requestAnimFrame(render, canvas.get(0));
     };
 
     update();
+  }
+
+  function delayedInit() {
+    if (!shaderSourcesLoaded()) {
+      setTimeout(delayedInit, 50);
+      return;
+    }
+
+    var canvas = $("canvas#viz");
+    var body = $("body");
+    var wnd = $(window);
+    canvas.attr({
+      width: body.innerWidth(),
+      height: wnd.innerHeight()
+    });
+
+    initSoundManager();
+    initControls();
+    initGL();
   }
 
   $(document).ready(function() {
