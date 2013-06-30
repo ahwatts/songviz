@@ -25,7 +25,7 @@
       var elem = $(this);
       var canvas = $("canvas#viz");
       var song_path = elem.attr("data-song-path");
-      var sanitized_song_path = song_path.replace(new RegExp("[^A-Za-z0-9]", "g"), "").toLowerCase();
+      var sanitized_song_path = song_path.replace(new RegExp("[^A-Za-z0-9]", "g"), "_").toLowerCase();
       var sound = window.soundManager.createSound({
         id: "sound_song_" + sanitized_song_path,
         url: "/music/" + song_path,
@@ -71,6 +71,11 @@
       viz_container.data("fragment-shader-source") !== undefined;
   }
 
+  function clearScreen() {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.flush();
+  }
+
   function initGL() {
     var canvas = $("canvas#viz");
     gl = WebGLUtils.setupWebGL(canvas.get(0));
@@ -84,51 +89,76 @@
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
     gl.viewport(0, 0, canvas.innerWidth(), canvas.innerHeight());
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.clear(gl.DEPTH_BUFFER_BIT));
-    gl.flush();
+    clearScreen();
   }
 
-  function createShader(type, source) {
-    var shader = gl.createShader(type);
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      var log = gl.getShaderInfoLog(shader);
-      alert("Shader failed to compile: " + log);
-      console.error("Shader failed to compile: " + log + "\n" + "Shader source:\n" + source);
-      gl.deleteShader(shader);
-      shader = null;
+  function createShaderProgram(sources) {
+    var createShader = function(type, source) {
+      var shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        var log = gl.getShaderInfoLog(shader);
+        alert("Shader failed to compile: " + log);
+        console.error("Shader failed to compile: " + log + "\n" + "Shader source:\n" + source);
+        gl.deleteShader(shader);
+        shader = null;
+      }
+      return shader;
+    };
+
+    var createProgram = function(vertexShader, fragmentShader) {
+      var program = gl.createProgram();
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        var log = gl.getProgramInfoLog(program);
+        alert("Shader program failed to link: " + log);
+        console.error("Shader program failed to link: " + log);
+        gl.deleteProgram(program);
+        program = null;
+      }
+      return program;
+    };
+
+    var program = createProgram(
+      createShader(gl.VERTEX_SHADER, sources.vertexSource),
+      createShader(gl.FRAGMENT_SHADER, sources.fragmentSource)
+    );
+
+    var attributes = {}, uniforms = {}, n_attrs, n_unis, i, info;
+    n_attrs = gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES);
+    n_unis = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
+
+    for (i = 0; i < n_attrs; ++i) {
+      info = gl.getActiveAttrib(program, i);
+      attributes[info.name] = gl.getAttribLocation(program, info.name);
     }
-    return shader;
-  }
-
-  function createProgram(vertex, fragment) {
-    var program = gl.createProgram();
-    gl.attachShader(program, vertex);
-    gl.attachShader(program, fragment);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      var log = gl.getProgramInfoLog(program);
-      alert("Shader program failed to link: " + log);
-      console.error("Shader program failed to link: " + log);
-      gl.deleteProgram(program);
-      program = null;
+    for (i = 0; i < n_unis; ++i) {
+      info = gl.getActiveUniform(program, i);
+      uniforms[info.name] = gl.getUniformLocation(program, info.name);
     }
-    return program;
-  }
 
-  function destroyProgram(program) {
-    if (gl.isProgram(program)) {
-      var shaders = gl.getAttachedShaders(program);
-      for (var i = 0; i < shaders.length; ++i) {
-        var s = shaders[i];
-        if (gl.isShader(s)) {
-          gl.detachShader(program, s);
-          gl.deleteShader(s);
+    return {
+      "program": program,
+      "attributes": attributes,
+      "uniforms": uniforms,
+      "destroy": function() {
+        gl.useProgram(null);
+        if (gl.isProgram(program)) {
+          var shaders = gl.getAttachedShaders(program);
+          for (var i = 0; i < shaders.length; ++i) {
+            var s = shaders[i];
+            if (gl.isShader(s)) {
+              gl.detachShader(program, s);
+              gl.deleteShader(s);
+            }
+          }
+          gl.deleteProgram(program);
         }
       }
-      gl.deleteProgram(program);
-    }
+    };
   }
 
   function createPlaneGeometry(dims, min, refs) {
@@ -180,26 +210,30 @@
       "indices": index_buffer,
       "count": indices.length,
       "destroy": function() {
-        gl.deleteBuffer(position_buffer);
-        gl.deleteBuffer(index_buffer);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+        if (gl.isBuffer(position_buffer)) { gl.deleteBuffer(position_buffer); }
+        if (gl.isBuffer(index_buffer)) { gl.deleteBuffer(index_buffer); }
       }
     };
   }
 
   function startAnimation() {
     var canvas = $("canvas#viz");
-    var program = createProgram(
-      createShader(gl.VERTEX_SHADER, $("#viz_container").data("vertex-shader-source")),
-      createShader(gl.FRAGMENT_SHADER, $("#viz_container").data("fragment-shader-source")));
-    gl.useProgram(program);
-    var u_projection = gl.getUniformLocation(program, "uProjection");
-    var u_model_view = gl.getUniformLocation(program, "uModelView");
-    var a_position = gl.getAttribLocation(program, "aPosition");
 
+    var shader = createShaderProgram({
+      vertexSource: $("#viz_container").data("vertex-shader-source"),
+      fragmentSource: $("#viz_container").data("fragment-shader-source")
+    });
     var square = createPlaneGeometry(
       { width: 512.0, height: 512.0 },
       { x: -256.0, y: -256.0 },
       { x: 2, y: 3 });
+
+    gl.useProgram(shader.program);
+    var u_projection = shader.uniforms.uProjection;
+    var u_model_view = shader.uniforms.uModelView; 
+    var a_position = shader.attributes.aPosition;
 
     var square_position = vec3.create();
     var square_rotation = 0.0;
@@ -241,10 +275,9 @@
       var refresh = 30; // msec
 
       if (canvas.data("stopVisualization") === true) {
-        destroyProgram(program);
+        shader.destroy();
         square.destroy();
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        gl.flush();
+        clearScreen();
         return;
       } else {
         window.setTimeout(update, refresh);
