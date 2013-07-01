@@ -38,12 +38,21 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.2)
+    colored (1.2)
     daemons (1.1.9)
+    diff-lcs (1.2.4)
     erubis (2.7.0)
     eventmachine (1.0.3)
     eventmachine (1.0.3-x86-mingw32)
     execjs (1.4.0)
       multi_json (~> 1.0)
+    git-up (0.5.8)
+      colored (>= 1.2)
+      grit
+    grit (2.5.0)
+      diff-lcs (~> 1.1)
+      mime-types (~> 1.15)
+      posix-spawn (~> 0.3.6)
     haml (4.0.2)
       tilt
     hike (1.2.3)
@@ -60,6 +69,7 @@ GEM
     mime-types (1.23)
     multi_json (1.7.7)
     polyglot (0.3.3)
+    posix-spawn (0.3.6)
     pry (0.9.12.2)
       coderay (~> 1.0.5)
       method_source (~> 0.8)
@@ -130,6 +140,7 @@ PLATFORMS
 
 DEPENDENCIES
   coffee-rails (~> 3.2.1)
+  git-up
   haml
   jquery-rails
   pry
