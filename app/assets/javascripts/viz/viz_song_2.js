@@ -237,7 +237,7 @@
     var i;
 
     for (i = 0; i < 256; ++i) {
-      amplitudes[i] = 128.0*Math.cos(i*2*Math.PI/255.0) + 128.0;
+      amplitudes[i] = 127.5*Math.cos(i*2*Math.PI/255.0) + 127.5;
     }
 
     texture = gl.createTexture();
@@ -274,12 +274,6 @@
     var amplitudes = createAmplitudeTexture();
 
     gl.useProgram(shader.program);
-    var u_projection = shader.uniforms.uProjection;
-    var u_model_view = shader.uniforms.uModelView;
-    var u_amplitudes = shader.uniforms.uAmplitudes;
-    var u_max_amplitude = shader.uniforms.uMaxAmplitude;
-    var a_position = shader.attributes.aPosition;
-    var a_tex_coord = shader.attributes.aTexCoord;
 
     var square_position = vec3.create();
     var square_rotation = 0.0;
@@ -304,31 +298,30 @@
       var model_view = mat4.clone(base_model_view);
       mat4.rotateY(model_view, model_view, square_rotation);
 
-      gl.uniformMatrix4fv(u_projection, false, projection);
-      gl.uniformMatrix4fv(u_model_view, false, model_view);
-      gl.uniform1f(u_max_amplitude, 256.0);
+      gl.uniformMatrix4fv(shader.uniforms.uProjection, false, projection);
+      gl.uniformMatrix4fv(shader.uniforms.uModelView, false, model_view);
 
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, amplitudes);
-      gl.uniform1i(u_amplitudes, 0);
+      gl.uniform1i(shader.uniforms.uAmplitudes, 0);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, square.attributes);
       gl.vertexAttribPointer(
-        a_position,                        // attribute location
+        shader.attributes.aPosition,       // attribute location
         3,                                 // components per attribute
         gl.FLOAT,                          // component type
         false,                             // normalized
         square.vertexWidth*Float32Array.BYTES_PER_ELEMENT,     // stride (in bytes)
         square.positionOffset*Float32Array.BYTES_PER_ELEMENT); // offset (in bytes)        
-      gl.enableVertexAttribArray(a_position);
+      gl.enableVertexAttribArray(shader.attributes.aPosition);
       gl.vertexAttribPointer(
-        a_tex_coord,                       // attribute location
+        shader.attributes.aTexCoord,       // attribute location
         2,                                 // components per attribute
         gl.FLOAT,                          // component type
         false,                             // normalized
         square.vertexWidth*Float32Array.BYTES_PER_ELEMENT,     // stride (in bytes)
         square.texCoordOffset*Float32Array.BYTES_PER_ELEMENT); // offset (in bytes)
-      gl.enableVertexAttribArray(a_tex_coord);
+      gl.enableVertexAttribArray(shader.attributes.aTexCoord);
 
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, square.indices);
       gl.drawElements(gl.TRIANGLES, square.count, gl.UNSIGNED_SHORT, 0);
