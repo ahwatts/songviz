@@ -30,7 +30,7 @@
         id: "sound_song_" + sanitized_song_path,
         url: "/music/" + song_path,
         whileplaying: function() {
-          eq_data = this.eqData;
+          canvas.data("eq-data", this.eqData);
         }
       });
       elem.data("sound", sound);
@@ -225,38 +225,63 @@
       "destroy": function() {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-        if (gl.isBuffer(position_buffer)) { gl.deleteBuffer(position_buffer); }
+        if (gl.isBuffer(attribute_buffer)) { gl.deleteBuffer(attribute_buffer); }
         if (gl.isBuffer(index_buffer)) { gl.deleteBuffer(index_buffer); }
       }
     };
   }
 
   function createAmplitudeTexture() {
-    var amplitudes = new Uint8Array(256);
+    var canvas = $("canvas#viz");
+    var num_amplitudes = 512;
+    var amplitudes = new Uint8Array(num_amplitudes);
     var texture = null;
     var i;
 
-    for (i = 0; i < 256; ++i) {
-      amplitudes[i] = 127.5*Math.cos(i*2*Math.PI/255.0) + 127.5;
+    for (i = 0; i < num_amplitudes; ++i) {
+      amplitudes[i] = 127.5*Math.cos(i*2*Math.PI/(num_amplitudes - 1)) + 127.5;
     }
 
     texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(
-      gl.TEXTURE_2D, // target
-      0,             // level
-      gl.ALPHA,      // internal format
-      256,           // width
-      1,             // height
-      0,             // border
-      gl.ALPHA,      // format
+      gl.TEXTURE_2D,    // target
+      0,                // level
+      gl.ALPHA,         // internal format
+      num_amplitudes,   // width
+      1,                // height
+      0,                // border
+      gl.ALPHA,         // format
       gl.UNSIGNED_BYTE, // type
-      amplitudes     // data
+      amplitudes        // data
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 
-    return texture;
+    return {
+      "texture": texture,
+      "update": function() {
+        var i, eq_data = canvas.data("eq-data");
+        for (i = 0; i < 256; ++i) {
+          amplitudes[i] = Math.floor(eq_data.left[i] * 255.99);
+        }
+        for (i = 0; i < 256; ++i) {
+          amplitudes[i+256] = Math.floor(eq_data.right[i] * 255.99);
+        }
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(
+          gl.TEXTURE_2D,    // target
+          0,                // level
+          gl.ALPHA,         // internal format
+          num_amplitudes,   // width
+          1,                // height
+          0,                // border
+          gl.ALPHA,         // format
+          gl.UNSIGNED_BYTE, // type
+          amplitudes        // data
+        );
+      }
+    };
   }
 
   function startAnimation() {
@@ -301,8 +326,8 @@
       gl.uniformMatrix4fv(shader.uniforms.uProjection, false, projection);
       gl.uniformMatrix4fv(shader.uniforms.uModelView, false, model_view);
 
+      gl.bindTexture(gl.TEXTURE_2D, amplitudes.texture);
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, amplitudes);
       gl.uniform1i(shader.uniforms.uAmplitudes, 0);
 
       gl.bindBuffer(gl.ARRAY_BUFFER, square.attributes);
@@ -343,6 +368,7 @@
       
       square_rotation = square_rotation + (2*Math.PI / 10000)*refresh;
       if (square_rotation > 2*Math.PI) { square_rotation = square_rotation - 2*Math.PI; }
+      amplitudes.update();
       window.requestAnimFrame(render, canvas.get(0));
     };
 
