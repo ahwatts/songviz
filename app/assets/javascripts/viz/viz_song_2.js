@@ -31,6 +31,7 @@
         url: "/music/" + song_path,
         whileplaying: function() {
           canvas.data("eq-data", this.eqData);
+          canvas.data("waveform-data", this.waveformData);
         }
       });
       elem.data("sound", sound);
@@ -182,7 +183,7 @@
 
         // Texture coordinates.
         attribute_data[k+3] = (y - min.y) / dims.height;
-        attribute_data[k+4] = 0.0;
+        attribute_data[k+4] = (x - min.x) / dims.width;
       }
     }
 
@@ -233,13 +234,16 @@
 
   function createAmplitudeTexture() {
     var canvas = $("canvas#viz");
-    var num_amplitudes = 512;
-    var amplitudes = new Uint8Array(num_amplitudes);
+    var width = 256;
+    var height = 3;
+    var amplitudes = new Uint8Array(width*height);
     var texture = null;
     var i;
 
-    for (i = 0; i < num_amplitudes; ++i) {
-      amplitudes[i] = 127.5*Math.cos(i*2*Math.PI/(num_amplitudes - 1)) + 127.5;
+    for (i = 0; i < width; ++i) {
+      amplitudes[i]         = 127.5*Math.cos(i*2*Math.PI/(width - 1)) + 127.5;
+      amplitudes[width+i]   = 0;
+      amplitudes[2*width+i] = 127.5*Math.sin(i*2*Math.PI/(width - 1)) + 127.5;
     }
 
     texture = gl.createTexture();
@@ -248,8 +252,8 @@
       gl.TEXTURE_2D,    // target
       0,                // level
       gl.ALPHA,         // internal format
-      num_amplitudes,   // width
-      1,                // height
+      width,            // width
+      height,           // height
       0,                // border
       gl.ALPHA,         // format
       gl.UNSIGNED_BYTE, // type
@@ -257,24 +261,27 @@
     );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     return {
       "texture": texture,
       "update": function() {
         var i, eq_data = canvas.data("eq-data");
+        if (eq_data === undefined) { return; }
         for (i = 0; i < 256; ++i) {
           amplitudes[i] = Math.floor(eq_data.left[i] * 255.99);
         }
         for (i = 0; i < 256; ++i) {
-          amplitudes[i+256] = Math.floor(eq_data.right[i] * 255.99);
+          amplitudes[2*width+i] = Math.floor(eq_data.right[i] * 255.99);
         }
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(
           gl.TEXTURE_2D,    // target
           0,                // level
           gl.ALPHA,         // internal format
-          num_amplitudes,   // width
-          1,                // height
+          width,            // width
+          height,           // height
           0,                // border
           gl.ALPHA,         // format
           gl.UNSIGNED_BYTE, // type
