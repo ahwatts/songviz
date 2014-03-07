@@ -29,4 +29,5 @@ class VizController < ApplicationController
   end
 
   alias_method :song2, :song
+  alias_method :song3, :song
 end

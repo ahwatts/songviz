@@ -2,6 +2,7 @@ Songviz::Application.routes.draw do
   get("music(/*path)" => "music#serve_song", :as => :serve_song, :defaults => { :format => "mp3" })
   match("viz/song(/*path)" => "viz#song", :via => [ :get, :post ], :as => :viz_song)
   match("viz/song2(/*path)" => "viz#song2", :via => [ :get, :post ], :as => :viz_song_2)
+  match("viz/song3(/*path)" => "viz#song3", :via => [ :get, :post ], :as => :viz_song_3)
   root("viz#index")
 
   # The priority is based upon order of creation: first created -> highest priority.

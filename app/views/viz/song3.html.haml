@@ -1,0 +1,16 @@
+- content_for :include_stylesheets do
+  = stylesheet_link_tag "viz/song"
+
+- content_for :include_javascripts do
+  = javascript_include_tag "viz/song_3"
+
+%div#song_info
+  %audio#song{ :src => serve_song_path(@song_path), :controls => true }
+    %p Your browser does not support the &lt;audio&gt; element.
+
+-# %div#controls
+-#   %a{ :href => "#", "data-song-elem" => "song", "data-song-action" => "play" } Play
+-#   %a{ :href => "#", "data-song-elem" => "song", "data-song-action" => "stop" } Stop
+
+%div#viz_container
+  %canvas#viz
