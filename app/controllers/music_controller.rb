@@ -14,6 +14,7 @@ class MusicController < ApplicationController
 
     respond_to do |format|
       format.mp3 { send_file(@song_path.to_s) }
+      format.ogg { send_file(@song_path.to_s) }
     end
   end
 end

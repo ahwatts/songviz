@@ -24,6 +24,7 @@
       for (i = 0; i < source.channelCount; ++i) {
         analyzers[i] = context.createAnalyser();
         analyzers[i].fftSize = FREQ_BIN_COUNT*2;
+        analyzers[i].smoothingTimeConstant = 0.8;
         splitter.connect(analyzers[i], i);
         analyzers[i].connect(merger, 0, i);
       }
@@ -280,7 +281,7 @@
 
         for (i = 0; i < width; ++i) {
           amplitudes[i] = eq_data[channel1][i];
-          amplitudes[2*width*i] = eq_data[channel2][i];
+          amplitudes[2*width+i] = eq_data[channel2][i];
         }
 
         gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -309,7 +310,7 @@
     var square = createPlaneGeometry({
       width: 512.0, height: 512.0,
       left: -256.0, bottom: -256.0,
-      xRefinements: 2, yRefinements: 256
+      xRefinements: 2, yRefinements: 1025
     });
     var amplitudes = createAmplitudeTexture();
 

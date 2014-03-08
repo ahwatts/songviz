@@ -15,10 +15,13 @@ class ApplicationController < ActionController::Base
       return nil
     end
 
-    song_path = song_path.dirname + (song_path.basename.to_s + ".mp3")
+    mp3_song_path = song_path.dirname + (song_path.basename.to_s + ".mp3")
+    ogg_song_path = song_path.dirname + (song_path.basename.to_s + ".ogg")
 
-    if !song_path.exist?
-      logger.error("Song path does not exist: #{song_path.inspect}")
+    song_path = [ mp3_song_path, ogg_song_path ].find { |p| p.exist? }
+
+    if song_path.nil?
+      logger.error("Song path does not exist: #{mp3_song_path.inspect} or #{ogg_song_path.inspect}")
       return nil
     end
 
