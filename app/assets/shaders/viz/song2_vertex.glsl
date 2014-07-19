@@ -1,4 +1,3 @@
-// -*- mode: c -*-
 uniform mat4 uProjection;
 uniform mat4 uModelView;
 uniform sampler2D uAmplitudes;

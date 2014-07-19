@@ -1,4 +1,3 @@
-// -*- mode: c -*-
 precision mediump float;
 
 varying float vAmplitude;

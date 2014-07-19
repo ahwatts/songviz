@@ -1,5 +1,3 @@
-// -*- mode: c -*-
-
 attribute float amplitude;
 varying vec4 vColor;
 
